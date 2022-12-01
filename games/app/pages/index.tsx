@@ -42,6 +42,7 @@ export default function Home() {
   const [inputTextureId, setInputTextureId] = useState("0");
 
   const connectWallet = async () => {
+    window.localStorage.setItem("session-key", "false");
     try {
       const starknet = getStarknet();
       // const starknet = await connect();
@@ -54,6 +55,22 @@ export default function Home() {
       console.error(e);
     }
   };
+
+  const connectWalletWithSession = async () => {
+    window.localStorage.setItem("session-key", "false");
+    try {
+      const starknet = getStarknet();
+      // const starknet = await connect();
+      await starknet!.enable({
+        starknetVersion: "v4",
+      } as any);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      setAccount(starknet?.account);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
 
   const getNFTs = async () => {
     if (!account) {
@@ -111,6 +128,9 @@ export default function Home() {
 
     const sessionAccount = new SessionAccount(account, account.address, sessionSigner, signedSession);
     setSessionAccount(sessionAccount);
+
+    window.localStorage.setItem("session-key", "true");
+
   };
 
   const setMap = async () => {
@@ -207,6 +227,10 @@ export default function Home() {
   };
 
   const run = async (type: string, x: number, y: number, z: number) => {
+
+
+
+
     if (type === "set") {
       x = x > 0 ? x : x * -1;
       y = y > 0 ? y : y * -1;
@@ -216,6 +240,8 @@ export default function Home() {
       console.log("y", y);
       console.log("z", z);
       console.log("isSessionEnabled", !!sessionAccount);
+      console.log('check')
+
       if (sessionAccount) {
         const result = await sessionAccount.execute(
           {
@@ -255,10 +281,59 @@ export default function Home() {
     }
     supportsSessions(account.address, account).then((result) => setIsSupportsSession(result));
 
+
+
     window.addEventListener("message", async function (event) {
-      run(event.data.type, event.data.x, event.data.y, event.data.z);
+
+      const isUseSession = window.localStorage.getItem("session-key");
+      console.log("isUseSession", isUseSession)
+
+      let { type, x, y, z} = event.data
+      if (type === "set") {
+        x = x > 0 ? x : x * -1;
+        y = y > 0 ? y : y * -1;
+        z = z > 0 ? z : z * -1;
+        console.log("object put at...");
+        console.log("x", x);
+        console.log("y", y);
+        console.log("z", z);
+        console.log("isSessionEnabled", !!sessionAccount);
+  
+        console.log('check')
+  
+        if (sessionAccount) {
+          const result = await sessionAccount.execute(
+            {
+              entrypoint: "set_eccd65dc",
+              contractAddress: deployments[network],
+              calldata: [
+                [number.toFelt(inputX), ""],
+                [number.toFelt(inputY), ""],
+                [number.toFelt(inputZ), ""],
+                [number.toFelt(inputModelId), ""],
+                [number.toFelt(inputTextureId), ""],
+              ],
+            },
+            undefined,
+            {
+              maxFee: "10000",
+            }
+          );
+          console.log(result);
+        } else if(isUseSession === "false") {
+          const contract = new Contract(contractAbi as any, deployments[network], account);
+          const result = await contract.set_eccd65dc(
+            [number.toFelt(x), ""],
+            [number.toFelt(y), ""],
+            [number.toFelt(z), ""],
+            [number.toFelt("0"), ""],
+            [number.toFelt("0"), ""]
+          );
+          console.log(result);
+        }
+      }
     });
-  }, []);
+  }, [account, sessionAccount]);
 
   return (
     <div>
