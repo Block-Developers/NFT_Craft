@@ -16,6 +16,7 @@ export const Ground = () => {
       onClick={(e) => {
         e.stopPropagation();
         const [x, y, z] = Object.values(e.point).map((val) => Math.ceil(val));
+        console.log("send message from nft craft")
         window.parent.postMessage({ type: "set", x, y, z }, "*");
         addCube(x, y, z);
       }}
